@@ -1,0 +1,23 @@
+services:
+  app:
+    build: .
+    ports:
+        - "5173:5173"
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/quizroom
+      DB_USERNAME: quizuser
+      DB_PASSWORD: quizPass
+      GOOGLE_CLIENT_ID: 362322098118-h42lgaosi9mbghvgs9rof8ba1kcso4tq.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: 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
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16.11-alpine3.23
+    environment:
+      POSTGRES_DB: quizroom
+      POSTGRES_USER: quizuser
+      POSTGRES_PASSWORD: quizPass
+    ports:
+      - "5432:5432"
+
