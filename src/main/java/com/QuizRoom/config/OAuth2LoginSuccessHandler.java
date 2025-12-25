@@ -14,8 +14,7 @@ import com.QuizRoom.repository.UserRepository;
 import java.io.IOException;
 
 @Component
-public class OAuth2LoginSuccessHandler
-        implements AuthenticationSuccessHandler {
+public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
@@ -33,37 +32,38 @@ public class OAuth2LoginSuccessHandler
     ) throws IOException {
 
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+
         String email = oAuth2User.getAttribute("email");
         String googleSub = oAuth2User.getAttribute("sub");
         String name = oAuth2User.getAttribute("name");
         String picture = oAuth2User.getAttribute("picture");
 
-        // Create or update user in database
         User user = userRepository.findByGoogleSub(googleSub)
                 .orElse(new User());
-        
+
         user.setGoogleSub(googleSub);
         user.setEmail(email);
         user.setPicture(picture);
+
         if (user.getDisplayName() == null || user.getDisplayName().isEmpty()) {
-            user.setDisplayName(name); // Set initial display name from Google
+            user.setDisplayName(name);
         }
-        
+
         userRepository.save(user);
 
         String jwt = jwtUtil.generateToken(email);
 
-        // OPTION 1: Send JWT in HttpOnly Cookie (Recommended)
         ResponseCookie cookie = ResponseCookie.from("JWT", jwt)
                 .httpOnly(true)
-                .secure(false) // true in prod (HTTPS)
+                .secure(false)       // false for development (localhost)
+                .sameSite("Lax")     // Lax for development, use None with secure=true in production
                 .path("/")
                 .maxAge(24 * 60 * 60)
-                .sameSite("Lax")
                 .build();
 
         response.addHeader("Set-Cookie", cookie.toString());
 
+        // Redirect to FRONTEND
         response.sendRedirect("http://localhost:5173");
     }
 }

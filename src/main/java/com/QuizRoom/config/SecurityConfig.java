@@ -52,7 +52,11 @@ public class SecurityConfig {
                         .csrfTokenRepository(
                                 CookieCsrfTokenRepository.withHttpOnlyFalse()
                         )
-                        .ignoringRequestMatchers("/logout")
+                        .ignoringRequestMatchers(
+                                "/oauth2/**",
+                                "/login/oauth2/**",
+                                "/logout"
+                        )
                 )
 
                 /* ========== STATELESS ========== */
@@ -66,7 +70,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/oauth2/**",
-                                "/login/oauth2/**"
+                                "/login/oauth2/**",
+                                "/error",
+                                "/api/csrf-token"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

@@ -38,8 +38,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(
                             email,
                             null,
-                            List.of()
+                            List.of() // Add roles here if needed: List.of(new SimpleGrantedAuthority("ROLE_USER"))
                     );
+            
+            authentication.setDetails(request.getRemoteAddr()); // Add request details for audit
 
             SecurityContextHolder.getContext()
                     .setAuthentication(authentication);

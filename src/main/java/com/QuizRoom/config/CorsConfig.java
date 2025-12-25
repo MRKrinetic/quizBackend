@@ -17,10 +17,25 @@ public class CorsConfig {
         config.setAllowedOrigins(
                 Arrays.asList("http://localhost:8080", "http://localhost:5173")
         );
+        
         config.setAllowedMethods(
-                Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
         );
-        config.setAllowedHeaders(Arrays.asList("*"));
+        
+        // Explicit headers required when allowCredentials = true
+        config.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "X-XSRF-TOKEN",
+                "X-Requested-With"
+        ));
+        
+        // Expose headers that frontend needs to read
+        config.setExposedHeaders(Arrays.asList(
+                "X-XSRF-TOKEN"
+        ));
+        
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
