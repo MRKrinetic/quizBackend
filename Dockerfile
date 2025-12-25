@@ -26,6 +26,6 @@ WORKDIR /app
 # Copy only the built jar
 COPY --from=build /build/target/*.jar app.jar
 
-EXPOSE 5173
+EXPOSE 8080
 
 ENTRYPOINT ["java","-jar","app.jar"]

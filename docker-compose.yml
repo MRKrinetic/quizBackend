@@ -2,7 +2,7 @@ services:
   app:
     build: .
     ports:
-        - "5173:5173"
+        - "8080:8080"
     environment:
       DB_URL: jdbc:postgresql://db:5432/quizroom
       DB_USERNAME: quizuser

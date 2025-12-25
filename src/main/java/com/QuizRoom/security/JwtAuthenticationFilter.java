@@ -1,8 +1,8 @@
-package com.QuizRoom.config;
+package com.QuizRoom.security;
 
-import com.QuizRoom.security.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -31,22 +31,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = extractJwtFromCookie(request);
 
-        if (token != null && token.startsWith("Bearer ")) {
-            String email = authHeader.substring(7);
+        if (token != null && jwtUtil.isTokenValid(token)) {
+            String email = jwtUtil.extractEmail(token);
 
-            if (jwtUtil.isTokenValid(token)) {
-                String email = jwtUtil.extractEmail(token);
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            email,
+                            null,
+                            List.of()
+                    );
 
-                UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(
-                                email, null, List.of()
-                        );
-
-                SecurityContextHolder.getContext()
-                        .setAuthentication(auth);
-            }
+            SecurityContextHolder.getContext()
+                    .setAuthentication(authentication);
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String extractJwtFromCookie(HttpServletRequest request) {
+        if (request.getCookies() == null) return null;
+
+        for (Cookie cookie : request.getCookies()) {
+            if ("JWT".equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 }

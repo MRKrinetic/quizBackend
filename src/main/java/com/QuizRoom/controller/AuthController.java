@@ -2,8 +2,7 @@ package com.QuizRoom.controller;
 
 import com.QuizRoom.entity.User;
 import com.QuizRoom.repository.UserRepository;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,10 +16,13 @@ public class AuthController {
     }
 
     @GetMapping("/api/auth/me")
-    public User me(@AuthenticationPrincipal OAuth2User oAuth2User) {
-        if (oAuth2User == null) return null;
+    public User me(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
 
-        String sub = oAuth2User.getAttribute("sub");
-        return userRepository.findByGoogleSub(sub).orElse(null);
+        // After JWT authentication, the principal is the email string
+        String email = (String) authentication.getPrincipal();
+        return userRepository.findByEmail(email).orElse(null);
     }
 }

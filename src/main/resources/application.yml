@@ -1,5 +1,8 @@
 server:
-  port: 5173
+  port: 8080
+
+jwt:
+  secret: THIS_IS_A_MINIMUM_32_CHAR_SECRET_KEY!!
 
 spring:
   jpa:

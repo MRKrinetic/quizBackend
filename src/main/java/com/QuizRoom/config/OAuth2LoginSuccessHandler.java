@@ -1,23 +1,27 @@
 package com.QuizRoom.config;
 
-import com.QuizRoom.entity.User;
-import com.QuizRoom.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import com.QuizRoom.security.JwtUtil;
+import com.QuizRoom.entity.User;
+import com.QuizRoom.repository.UserRepository;
+
+import java.io.IOException;
 
 @Component
-public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
-    @Autowired
+public class OAuth2LoginSuccessHandler
+        implements AuthenticationSuccessHandler {
+
+    private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
 
-    public OAuth2LoginSuccessHandler(UserRepository userRepository) {
+    public OAuth2LoginSuccessHandler(JwtUtil jwtUtil, UserRepository userRepository) {
+        this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
     }
 
@@ -25,27 +29,41 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     public void onAuthenticationSuccess(
             HttpServletRequest request,
             HttpServletResponse response,
-            Authentication authentication) throws IOException {
+            Authentication authentication
+    ) throws IOException {
 
-        OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
+        OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+        String email = oAuth2User.getAttribute("email");
+        String googleSub = oAuth2User.getAttribute("sub");
+        String name = oAuth2User.getAttribute("name");
+        String picture = oAuth2User.getAttribute("picture");
 
-        String sub = oauthUser.getAttribute("sub");
-        String name = oauthUser.getAttribute("name");
-        String email = oauthUser.getAttribute("email");
-        String picture = oauthUser.getAttribute("picture");
-
-        User user = userRepository.findByGoogleSub(sub)
-                .orElseGet(() -> {
-                    User u = new User();
-                    u.setGoogleSub(sub);
-                    u.setEmail(email);
-                    u.setPicture(picture);
-                    u.setDisplayName(name); // ✅ default name
-                    return u;
-                });
-
+        // Create or update user in database
+        User user = userRepository.findByGoogleSub(googleSub)
+                .orElse(new User());
+        
+        user.setGoogleSub(googleSub);
+        user.setEmail(email);
+        user.setPicture(picture);
+        if (user.getDisplayName() == null || user.getDisplayName().isEmpty()) {
+            user.setDisplayName(name); // Set initial display name from Google
+        }
+        
         userRepository.save(user);
 
-        response.sendRedirect("http://localhost:8080");
+        String jwt = jwtUtil.generateToken(email);
+
+        // OPTION 1: Send JWT in HttpOnly Cookie (Recommended)
+        ResponseCookie cookie = ResponseCookie.from("JWT", jwt)
+                .httpOnly(true)
+                .secure(false) // true in prod (HTTPS)
+                .path("/")
+                .maxAge(24 * 60 * 60)
+                .sameSite("Lax")
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
+
+        response.sendRedirect("http://localhost:5173");
     }
 }

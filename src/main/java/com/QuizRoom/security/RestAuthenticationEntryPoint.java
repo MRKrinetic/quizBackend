@@ -1,4 +1,4 @@
-package com.QuizRoom.config;
+package com.QuizRoom.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
