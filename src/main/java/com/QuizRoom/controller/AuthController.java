@@ -2,6 +2,7 @@ package com.QuizRoom.controller;
 
 import com.QuizRoom.entity.User;
 import com.QuizRoom.repository.UserRepository;
+import com.QuizRoom.security.CustomerUserDetails;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,8 +27,20 @@ public class AuthController {
                     .body(Map.of("error", "Not authenticated"));
         }
 
-        // After JWT authentication, the principal is the email string
-        String email = (String) authentication.getPrincipal();
+        Object principal = authentication.getPrincipal();
+        String email = null;
+
+        if (principal instanceof CustomerUserDetails userDetails) {
+            email = userDetails.getUsername();
+        } else if (principal instanceof String principalEmail) {
+            email = principalEmail;
+        }
+
+        if (email == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Not authenticated"));
+        }
+
         User user = userRepository.findByEmail(email).orElse(null);
         
         if (user == null) {

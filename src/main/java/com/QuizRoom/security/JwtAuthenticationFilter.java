@@ -5,21 +5,23 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import com.QuizRoom.repository.UserRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil) {
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, UserRepository userRepository) {
         this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -34,17 +36,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && jwtUtil.isTokenValid(token)) {
             String email = jwtUtil.extractEmail(token);
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            email,
-                            null,
-                            List.of() // Add roles here if needed: List.of(new SimpleGrantedAuthority("ROLE_USER"))
-                    );
-            
-            authentication.setDetails(request.getRemoteAddr()); // Add request details for audit
+            userRepository.findByEmail(email).ifPresent(user -> {
+                CustomerUserDetails principal = new CustomerUserDetails(user);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                principal,
+                                null,
+                                principal.getAuthorities()
+                        );
 
-            SecurityContextHolder.getContext()
-                    .setAuthentication(authentication);
+                authentication.setDetails(request.getRemoteAddr());
+
+                SecurityContextHolder.getContext()
+                        .setAuthentication(authentication);
+            });
         }
 
         filterChain.doFilter(request, response);

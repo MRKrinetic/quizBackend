@@ -11,6 +11,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -52,10 +53,12 @@ public class SecurityConfig {
                         .csrfTokenRepository(
                                 CookieCsrfTokenRepository.withHttpOnlyFalse()
                         )
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                         .ignoringRequestMatchers(
                                 "/oauth2/**",
                                 "/login/oauth2/**",
-                                "/logout"
+                                "/logout",
+                                "/ws/**"
                         )
                 )
 
@@ -72,7 +75,8 @@ public class SecurityConfig {
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/error",
-                                "/api/csrf-token"
+                                "/api/csrf-token",
+                                "/ws/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

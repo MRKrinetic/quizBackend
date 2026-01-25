@@ -5,6 +5,11 @@ jwt:
   secret: THIS_IS_A_MINIMUM_32_CHAR_SECRET_KEY!!
 
 spring:
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+
   jpa:
     hibernate:
       ddl-auto: update
