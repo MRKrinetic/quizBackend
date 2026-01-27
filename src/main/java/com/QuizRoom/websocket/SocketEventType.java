@@ -2,7 +2,10 @@ package com.QuizRoom.websocket;
 
 public enum SocketEventType {
     QUESTION,
+    QUESTION_ENDED,
     LEADERBOARD,
     CHAT,
-    QUIZ_ENDED
+    PLAYER_JOINED,
+    QUIZ_ENDED,
+    ROOM_ENDED
 }

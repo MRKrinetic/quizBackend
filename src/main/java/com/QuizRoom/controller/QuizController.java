@@ -31,6 +31,9 @@ public class QuizController {
             @RequestBody QuestionDTO question,
             @AuthenticationPrincipal CustomerUserDetails user
     ) {
+        if (!roomService.isHost(roomCode, user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
         roomService.publishQuestion(roomCode, user.getId(), question);
         quizSocketService.broadcastQuestion(roomCode, QuestionViewDTO.from(question));
     }

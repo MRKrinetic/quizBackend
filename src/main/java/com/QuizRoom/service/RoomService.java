@@ -1,11 +1,14 @@
 package com.QuizRoom.service;
 
 import com.QuizRoom.dto.QuestionDTO;
+import com.QuizRoom.dto.QuestionViewDTO;
 import com.QuizRoom.dto.RoomStateResponse;
 import com.QuizRoom.entity.QuizAttempt;
 import com.QuizRoom.entity.User;
 import com.QuizRoom.repository.QuizAttemptRepository;
 import com.QuizRoom.repository.UserRepository;
+import com.QuizRoom.websocket.SocketEvent;
+import com.QuizRoom.websocket.SocketEventType;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.Cursor;
@@ -17,10 +20,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -34,6 +36,8 @@ public class RoomService {
     private final QuizAttemptRepository quizAttemptRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final QuizSocketService quizSocketService;
+
 
     public void endRoom(String roomCode, Long hostId) {
         System.out.println("🔥 SERVICE endRoom() called");
@@ -105,21 +109,15 @@ public class RoomService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("User not found"));
 
-        if(added == 1) {
+        if (added == 1) {
             // 4️⃣ 🔥 BROADCAST PLAYER_JOINED EVENT (PLACE IT HERE)
             Map<String, Object> payload = new HashMap<>();
             payload.put("id", user.getId());
             payload.put("name", user.getDisplayName());
             payload.put("score", 0);
 
-            Map<String, Object> message = new HashMap<>();
-            message.put("type", "PLAYER_JOINED");
-            message.put("payload", payload);
+            quizSocketService.broadcastPlayerJoined(roomCode, payload);
 
-            messagingTemplate.convertAndSend(
-                    "/topic/room/" + roomCode,
-                    (Object) message
-            );
         }
     }
 
@@ -130,20 +128,129 @@ public class RoomService {
 
         validateHost(roomCode, hostId);
 
+        Boolean firstTime = redisTemplate.opsForSet().add(
+                roomSentQuestions(roomCode),
+                question.getId().toString()
+        ) == 1;
+
+        if (!firstTime) {
+            throw new IllegalStateException(
+                    "Question already sent. Move to next question."
+            );
+        }
+
         String questionKey = roomQuestion(roomCode);
 
-        redisTemplate.opsForHash().put(questionKey, "id", question.getId());
-        redisTemplate.opsForHash().put(questionKey, "type", question.getType());
-        redisTemplate.opsForHash().put(questionKey, "text", question.getText());
-        redisTemplate.opsForHash().put(questionKey, "options", question.getOptionsJson());
-        redisTemplate.opsForHash().put(questionKey, "endTime", question.getEndTime().toString());
-        redisTemplate.opsForHash().put(questionKey, "points", question.getPoints());
-        redisTemplate.opsForHash().put(questionKey, "timeLimitSeconds", question.getTimeLimitSeconds());
+        redisTemplate.opsForHash().put(questionKey, "id",
+                String.valueOf(question.getId()));
+
+        redisTemplate.opsForHash().put(questionKey, "type",
+                question.getType().name());
+
+        redisTemplate.opsForHash().put(questionKey, "text",
+                question.getText());
+
+        if (question.getOptionsJson() != null) {
+            redisTemplate.opsForHash().put(questionKey, "options",
+                    question.getOptionsJson());
+        }
+
+        redisTemplate.opsForHash().put(questionKey, "endTime",
+                question.getEndTime().toString());
+
+        redisTemplate.opsForHash().put(questionKey, "points",
+                String.valueOf(question.getPoints()));
+
+        redisTemplate.opsForHash().put(questionKey, "timeLimitSeconds",
+                String.valueOf(question.getTimeLimitSeconds()));
 
         redisTemplate.opsForValue().set(
                 "room:" + roomCode + ":question:answer",
-                question.getCorrectAnswer()
+                String.join(",", question.getCorrectAnswer())
         );
+
+        redisTemplate.opsForHash().put(
+                roomQuestion(roomCode),
+                "questionKey",
+                UUID.randomUUID().toString()
+        );
+
+
+        quizSocketService.broadcastQuestion(roomCode, QuestionViewDTO.from(question));
+
+        // 🔥 SCHEDULE EVALUATION
+        scheduleEvaluation(roomCode, question);
+    }
+
+
+    private void scheduleEvaluation(String roomCode, QuestionDTO question) {
+        long delayMs =
+                question.getEndTime().toEpochMilli()
+                        - Instant.now().toEpochMilli();
+
+        if (delayMs < 0) return;
+
+        CompletableFuture.delayedExecutor(delayMs, TimeUnit.MILLISECONDS)
+                .execute(() -> evaluateQuestion(roomCode, question));
+    }
+
+    private void evaluateQuestion(String roomCode, QuestionDTO question) {
+        String answerKey = "room:" + roomCode + ":answers:" + question.getId();
+        String correctKey = "room:" + roomCode + ":question:answer";
+        String scoreKey = "room:" + roomCode + ":scores";
+
+        Set<String> correctAnswers =
+                Set.of(redisTemplate.opsForValue().get(correctKey).split(","));
+
+        Map<Object, Object> answers =
+                redisTemplate.opsForHash().entries(answerKey);
+
+        answers.forEach((userIdObj, valueObj) -> {
+            String userId = userIdObj.toString();
+            String submittedAnswer = valueObj.toString().split("\\|")[0];
+
+            Set<String> submittedSet = Arrays.stream(submittedAnswer.split(","))
+                    .map(String::trim)
+                    .collect(Collectors.toSet());
+
+            if (submittedSet.contains(submittedAnswer)) {
+                redisTemplate.opsForHash().increment(
+                        scoreKey,
+                        userId,
+                        question.getPoints()
+                );
+            }
+        });
+
+        // 🔥 SORT & BROADCAST LEADERBOARD
+        Map<String, Integer> leaderboard = getSortedLeaderboard(scoreKey);
+        quizSocketService.broadcastLeaderboard(roomCode, leaderboard);
+
+        redisTemplate.delete(roomQuestion(roomCode));
+        redisTemplate.delete(answerKey);
+        redisTemplate.delete(correctKey);
+
+        // ✅ NOTIFY CLIENTS QUESTION ENDED
+        quizSocketService.broadcastQuestionEnded(roomCode);
+    }
+
+
+    private Map<String, Integer> getSortedLeaderboard(String scoreKey) {
+        Map<Object, Object> raw = redisTemplate.opsForHash().entries(scoreKey);
+
+        return raw.entrySet().stream()
+                .collect(Collectors.toMap(
+                        e -> e.getKey().toString(),
+                        e -> Integer.parseInt(e.getValue().toString())
+                ))
+                .entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (a, b) -> a,
+                        LinkedHashMap::new
+                ));
     }
 
 
@@ -334,16 +441,22 @@ public class RoomService {
     }
 
 
-
     private String roomMeta(String code) {
         return "room:" + code + ":meta";
     }
+
     private String roomUsers(String code) {
         return "room:" + code + ":users";
     }
+
     private String roomQuestion(String code) {
         return "room:" + code + ":question";
     }
+
+    private String roomSentQuestions(String code) {
+        return "room:" + code + ":sentQuestions";
+    }
+
 
 }
 
