@@ -44,6 +44,7 @@ public class RoomService {
         System.out.println("roomCode=" + roomCode + ", hostId=" + hostId);
         validateHost(roomCode, hostId);
         System.out.println("✅ HOST VALIDATED");
+        quizSocketService.broadcastRoomEnded(roomCode);
         redisTemplate.opsForHash()
                 .put(roomMeta(roomCode), "status", "ENDED");
 
@@ -199,21 +200,32 @@ public class RoomService {
         String correctKey = "room:" + roomCode + ":question:answer";
         String scoreKey = "room:" + roomCode + ":scores";
 
-        Set<String> correctAnswers =
-                Set.of(redisTemplate.opsForValue().get(correctKey).split(","));
+        /* ✅ Parse correct answers safely */
+        String correctRaw = redisTemplate.opsForValue().get(correctKey);
+
+        if (correctRaw == null || correctRaw.isBlank()) {
+            return;
+        }
+
+        Set<String> correctAnswers = Arrays.stream(correctRaw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
 
         Map<Object, Object> answers =
                 redisTemplate.opsForHash().entries(answerKey);
 
         answers.forEach((userIdObj, valueObj) -> {
             String userId = userIdObj.toString();
-            String submittedAnswer = valueObj.toString().split("\\|")[0];
+            String submittedRaw = valueObj.toString().split("\\|")[0];
 
-            Set<String> submittedSet = Arrays.stream(submittedAnswer.split(","))
+            Set<String> submittedAnswers = Arrays.stream(submittedRaw.split(","))
                     .map(String::trim)
+                    .filter(s -> !s.isEmpty())
                     .collect(Collectors.toSet());
 
-            if (submittedSet.contains(submittedAnswer)) {
+            /* ✅ CORRECT COMPARISON */
+            if (submittedAnswers.equals(correctAnswers)) {
                 redisTemplate.opsForHash().increment(
                         scoreKey,
                         userId,
@@ -222,17 +234,19 @@ public class RoomService {
             }
         });
 
-        // 🔥 SORT & BROADCAST LEADERBOARD
+        /* 🔥 Broadcast leaderboard */
         Map<String, Integer> leaderboard = getSortedLeaderboard(scoreKey);
         quizSocketService.broadcastLeaderboard(roomCode, leaderboard);
 
+        /* 🧹 Cleanup */
         redisTemplate.delete(roomQuestion(roomCode));
         redisTemplate.delete(answerKey);
         redisTemplate.delete(correctKey);
 
-        // ✅ NOTIFY CLIENTS QUESTION ENDED
+        /* 🔔 Notify clients */
         quizSocketService.broadcastQuestionEnded(roomCode);
     }
+
 
 
     private Map<String, Integer> getSortedLeaderboard(String scoreKey) {

@@ -55,7 +55,7 @@ public class QuizSocketService {
     public void broadcastRoomEnded(String roomCode) {
         messagingTemplate.convertAndSend(
                 "/topic/room/" + roomCode,
-                new SocketEvent<Void>(
+                new SocketEvent<>(
                         SocketEventType.ROOM_ENDED,
                         null
                 )
