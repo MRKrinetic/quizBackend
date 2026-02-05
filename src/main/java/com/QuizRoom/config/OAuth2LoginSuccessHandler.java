@@ -58,6 +58,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 .secure(true)       // false for development (localhost)
                 .sameSite("None")     // Lax for development, use None with secure=true in production
                 .path("/")
+                .domain("quizbackend-acm9.onrender.com") 
                 .maxAge(24 * 60 * 60)
                 .build();
 
