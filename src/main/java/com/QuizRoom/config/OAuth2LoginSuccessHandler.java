@@ -64,6 +64,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         response.addHeader("Set-Cookie", cookie.toString());
 
         // Redirect to FRONTEND
-        response.sendRedirect("http://localhost:5173");
+        response.sendRedirect("https://quiz-room-mu.vercel.app");
     }
 }
