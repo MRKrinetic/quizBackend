@@ -1,18 +1,31 @@
-# ---- Build Stage ----
-FROM eclipse-temurin:17-jdk-alpine AS build
+# =========================
+# 1️⃣ Build stage
+# =========================
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+
+WORKDIR /build
+
+# Copy pom.xml first (better caching)
+COPY pom.xml .
+RUN mvn dependency:go-offline
+
+# Copy source
+COPY src ./src
+
+# Build JAR
+RUN mvn clean package -DskipTests
+
+
+# =========================
+# 2️⃣ Runtime stage
+# =========================
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
-COPY . .
 
-RUN chmod +x mvnw
-RUN ./mvnw clean package -DskipTests
-
-# ---- Run Stage ----
-FROM eclipse-temurin:17-jre-alpine
-
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+# Copy only the built jar
+COPY --from=build /build/target/*.jar app.jar
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "java -Dserver.port=${PORT} -jar app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]
