@@ -15,7 +15,7 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(
-                Arrays.asList("http://localhost:8080", "http://localhost:5173")
+                Arrays.asList("https://quizbackend-1-uzq8.onrender.com", "https://quiz-room-mu.vercel.app/")
         );
         
         config.setAllowedMethods(
