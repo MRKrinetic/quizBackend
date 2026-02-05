@@ -10,8 +10,8 @@ services:
       DB_PASSWORD: quizPass
       SPRING_REDIS_HOST: cache
       SPRING_REDIS_PORT: 6379
-      GOOGLE_CLIENT_ID: 362322098118-h42lgaosi9mbghvgs9rof8ba1kcso4tq.apps.googleusercontent.com
-      GOOGLE_CLIENT_SECRET: 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
+      GOOGLE_CLIENT_ID: 
+      GOOGLE_CLIENT_SECRET: 
     depends_on:
       - db
       - cache
