@@ -55,8 +55,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         ResponseCookie cookie = ResponseCookie.from("JWT", jwt)
                 .httpOnly(true)
-                .secure(false)       // false for development (localhost)
-                .sameSite("Lax")     // Lax for development, use None with secure=true in production
+                .secure(true)       // false for development (localhost)
+                .sameSite("None")     // Lax for development, use None with secure=true in production
                 .path("/")
                 .maxAge(24 * 60 * 60)
                 .build();
