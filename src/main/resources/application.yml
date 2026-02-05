@@ -1,14 +1,17 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 jwt:
-  secret: THIS_IS_A_MINIMUM_32_CHAR_SECRET_KEY!!
+  secret: ${JWT_SECRET}
 
 spring:
   data:
     redis:
       host: ${SPRING_REDIS_HOST}
       port: ${SPRING_REDIS_PORT}
+      password: ${SPRING_REDIS_PASSWORD}
+      ssl: 
+        enabled: true
 
   jpa:
     hibernate:
