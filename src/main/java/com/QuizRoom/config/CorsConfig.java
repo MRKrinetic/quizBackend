@@ -15,7 +15,7 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(
-                Arrays.asList("https://quiz-room-mu.vercel.app")
+                Arrays.asList("https://www.quizroom.tech")
         );
         
         config.setAllowedMethods(
