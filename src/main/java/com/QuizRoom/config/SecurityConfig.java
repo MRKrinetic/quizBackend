@@ -57,7 +57,6 @@ public class SecurityConfig {
                         .ignoringRequestMatchers(
                                 "/oauth2/**",
                                 "/login/oauth2/**",
-                                "/logout",
                                 "/ws/**"
                         )
                 )

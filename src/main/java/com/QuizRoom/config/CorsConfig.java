@@ -15,7 +15,7 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(
-                Arrays.asList("https://www.quizroom.tech")
+                Arrays.asList("https://www.quizroom.tech", "https://quizroom.tech")
         );
         
         config.setAllowedMethods(

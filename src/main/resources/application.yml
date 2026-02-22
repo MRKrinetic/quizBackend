@@ -3,7 +3,7 @@ server:
   servlet:
     session:
       cookie:
-        same-site: None
+        same-site: Lax
         secure: true
   forward-headers-strategy: framework
 
@@ -24,7 +24,7 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
-    show-sql: true
+    show-sql: false
 
   datasource:
     url: ${DB_URL}

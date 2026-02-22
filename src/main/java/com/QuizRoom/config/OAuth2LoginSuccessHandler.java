@@ -55,10 +55,10 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         ResponseCookie cookie = ResponseCookie.from("JWT", jwt)
                 .httpOnly(true)
-                .secure(true)       // false for development (localhost)
-                .sameSite("None")     // Lax for development, use None with secure=true in production
+                .secure(true)
+                .sameSite("Lax")
                 .path("/")
-                .domain("quizbackend-acm9.onrender.com") 
+                .domain(".quizroom.tech")
                 .maxAge(24 * 60 * 60)
                 .build();
 
