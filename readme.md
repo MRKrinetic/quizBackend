@@ -32,7 +32,7 @@ Environment variables (see `src/main/resources/application.yml`):
 | `SPRING_REDIS_PORT` | Redis port |
 | `SPRING_REDIS_PASSWORD` | Redis password |
 
-> Note: CORS, OAuth2 redirect, and WebSocket allowed origins are currently set to `quizroom.tech` in code. Update `CorsConfig`, `OAuth2LoginSuccessHandler`, and `WebSocketConfig` for local development.
+> Note: CORS, OAuth2 redirect, and WebSocket allowed origins are currently hardcoded to `quizroom.tech`. Update `CorsConfig`, `OAuth2LoginSuccessHandler`, and `WebSocketConfig` (or make them configurable) for local development.
 
 ## Run Locally
 ```bash
